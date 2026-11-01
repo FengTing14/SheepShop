@@ -90,6 +90,18 @@ final class ShopConfig {
         return plugin.getConfig().getString("room-shop-title", "§8商店 §7· 地牢币 §e%coins%");
     }
 
+    String sellTitle() {
+        return plugin.getConfig().getString("sell-title", "§8出售 §7· 合计 §e%total% §7地牢币%bonus%");
+    }
+
+    double sellShopRoomMultiplier() {
+        return Math.max(1.0, plugin.getConfig().getDouble("sell-shop-room-multiplier", 1.5));
+    }
+
+    String sellBonusSuffix() {
+        return plugin.getConfig().getString("sell-bonus-suffix", " §a↑商店房加成");
+    }
+
     String title() {
         return plugin.getConfig().getString("title", "§8商店");
     }

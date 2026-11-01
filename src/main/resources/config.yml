@@ -1,9 +1,9 @@
 # SheepShop 配置
 #
 # 商店分「房间商店」和「常驻商店」两种：
-#   - 房间商店：玩家站进 SheepDungeon 的 SHOP 房间时自动打开，商品来自
-#     dungeon/<地牢id>/room/shop_room.yml 的 shop.products（由 SheepDungeon 提供），
-#     本文件只控制界面外观和开关。
+#   - 房间商店：玩家站进 SheepDungeon 的 SHOP 房间后，用 /shop open room 打开，
+#     商品来自 dungeon/<地牢id>/room/shop_room.yml 的 shop.products（由 SheepDungeon 提供），
+#     本文件只控制界面外观和开关。房间里卖东西有价格加成。
 #   - 常驻商店：不限地牢，玩家用 /shop open <商店id> 打开，商品写在本文件的 shops 段。
 
 # 是否启用房间商店
@@ -20,6 +20,15 @@ title: "§8商店 §7· 地牢币 §e%coins%"
 # 界面行数（1-6）。商品多于一页时自动分成多页。
 rows: 3
 
+# ---------------- 出售界面 ----------------
+# 仿星露谷的箱子式卖货：把要卖的东西丢进上方格子，标题实时显示能卖多少钱。
+# 标题里的 %total% 是合计金额，%coins% 是当前余额，%bonus% 在商店房显示加成标记。
+sell-title: "§8出售 §7· 合计 §e%total% §7地牢币%bonus%"
+# 在商店房出售时的价格倍率。1.5 表示比外面多卖 50%。
+sell-shop-room-multiplier: 1.5
+# 商店房标题后缀
+sell-bonus-suffix: " §a↑商店房加成"
+
 # 余额不足时的提示
 messages:
   no-coins: "§c地牢币不足，还差 §e%need%§c。"
@@ -29,6 +38,9 @@ messages:
   inventory-full: "§e背包满了，物品掉在你脚下。"
   reloaded: "§a配置已重新加载。"
   players-only: "§c此命令只能由玩家执行。"
+  sell-nothing: "§c暂存区里没有能卖的东西。"
+  sold: "§a卖出 §f%count% §a件，获得 §e%total% §a地牢币。"
+  sell-returned: "§7已把暂存区的东西放回背包。"
 
 # 常驻商店：/shop open <id>
 shops:

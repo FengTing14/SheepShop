@@ -40,6 +40,9 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(plugin.shopConfig().message("reloaded"));
                 return true;
             }
+            case "sell" -> {
+                return sell(sender);
+            }
             case "coins" -> {
                 return coins(sender, args);
             }
@@ -86,6 +89,26 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
         return ids.isEmpty() ? null : ids.get(0);
     }
 
+    /**
+     * /shop sell —— 打开出售界面。
+     *
+     * <p>站在商店房里打开会享受价格加成；在地牢里但不是商店房，
+     * 只能开普通界面（和外面一样的价），这是「商店房卖得更多」的实现方式。</p>
+     */
+    private boolean sell(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(plugin.shopConfig().message("players-only"));
+            return true;
+        }
+        if (!player.hasPermission("sheepshop.use")) {
+            player.sendMessage("§c没有权限。");
+            return true;
+        }
+        boolean shopRoom = io.github.sheepdungeon.api.SheepDungeonAPI.inShopRoom(player);
+        plugin.sellGui().open(player, shopRoom);
+        return true;
+    }
+
     private boolean coins(CommandSender sender, String[] args) {
         Player target;
         if (args.length >= 2) {
@@ -107,7 +130,8 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     private void help(CommandSender sender, String label) {
         sender.sendMessage("§6[SheepShop] §7命令：");
         sender.sendMessage("§7/" + label + " open [商店id] §f- 打开常驻商店");
-        sender.sendMessage("§7/" + label + " open room §f- 打开当前房间商店");
+        sender.sendMessage("§6[SheepShop] §7/" + label + " open room §f- 打开当前房间商店");
+        sender.sendMessage("§6[SheepShop] §7/" + label + " sell §f- 打出售卖界面（商店房内价格更高）");
         sender.sendMessage("§7/" + label + " coins [玩家] §f- 查看地牢币");
         sender.sendMessage("§7/" + label + " list §f- 列出常驻商店");
         sender.sendMessage("§7/" + label + " reload §f- 重载配置");
@@ -117,7 +141,7 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> result = new ArrayList<>();
         if (args.length == 1) {
-            for (String option : List.of("open", "reload", "coins", "list")) {
+            for (String option : List.of("open", "sell", "reload", "coins", "list")) {
                 if (option.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     result.add(option);
                 }

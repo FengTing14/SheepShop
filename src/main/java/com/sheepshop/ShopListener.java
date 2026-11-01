@@ -5,10 +5,16 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.InventoryHolder;
 
-/** 界面点击：只允许左键点自己商店里的格子，其它一律取消。 */
+/**
+ * 界面事件。
+ *
+ * <p>买货界面：一律取消，只对左键点商品格子结算。
+ * 出售界面：暂存区允许自由放入取出，其它格子取消。</p>
+ */
 final class ShopListener implements Listener {
 
     private final SheepShop plugin;
@@ -20,6 +26,17 @@ final class ShopListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onClick(InventoryClickEvent event) {
         InventoryHolder holder = event.getInventory().getHolder();
+
+        if (holder instanceof SellGui.Holder sellHolder) {
+            if (!(event.getWhoClicked() instanceof Player player)) {
+                return;
+            }
+            if (plugin.sellGui().handleClick(player, sellHolder, event)) {
+                event.setCancelled(true);
+            }
+            return;
+        }
+
         if (!(holder instanceof ShopGui.Holder shopHolder)) {
             return;
         }
@@ -42,8 +59,27 @@ final class ShopListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onDrag(InventoryDragEvent event) {
-        if (event.getInventory().getHolder() instanceof ShopGui.Holder) {
+        InventoryHolder holder = event.getInventory().getHolder();
+        if (holder instanceof ShopGui.Holder) {
             event.setCancelled(true);
+            return;
+        }
+        if (holder instanceof SellGui.Holder) {
+            // 拖到功能区就整次取消；拖到暂存区允许
+            for (int slot : event.getRawSlots()) {
+                if (slot >= SellGui.STAGING_SIZE) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onClose(InventoryCloseEvent event) {
+        if (event.getInventory().getHolder() instanceof SellGui.Holder sellHolder
+                && event.getPlayer() instanceof Player player) {
+            plugin.sellGui().onClose(player, sellHolder);
         }
     }
 }
