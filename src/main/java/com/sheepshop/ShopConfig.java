@@ -90,25 +90,19 @@ final class ShopConfig {
         return plugin.getConfig().getString("room-shop-title", "§8商店 §7· 地牢币 §e%coins%");
     }
 
-    String sellTitle() {
-        return plugin.getConfig().getString("sell-title", "§8出售 §7· 合计 §e%total% §7地牢币%bonus%");
-    }
-
+    /** 在商店房卖东西的价格倍率；1.0 表示无加成。 */
     double sellShopRoomMultiplier() {
         return Math.max(1.0, plugin.getConfig().getDouble("sell-shop-room-multiplier", 1.5));
     }
 
     String sellBonusSuffix() {
-        return plugin.getConfig().getString("sell-bonus-suffix", " §a↑商店房加成");
+        return plugin.getConfig().getString("sell-bonus-suffix", " §a↑加成");
     }
 
-    String title() {
-        return plugin.getConfig().getString("title", "§8商店");
-    }
-
-    int rows() {
-        int rows = plugin.getConfig().getInt("rows", 3);
-        return Math.min(6, Math.max(1, rows));
+    /** 界面标题（买卖共用）。%coins% 余额，%total% 合计卖价，%bonus% 加成标记。 */
+    String shopTitle() {
+        return plugin.getConfig().getString("title",
+                "§8商店 §7· 余额 §e%coins% §7· 合计 §e%total%%bonus%");
     }
 
     /**
@@ -157,7 +151,7 @@ final class ShopConfig {
         if (section == null) {
             return null;
         }
-        return new ShopDefinition(key, section.getString("title", title()), readProducts(section));
+        return new ShopDefinition(key, section.getString("title", shopTitle()), readProducts(section));
     }
 
     /** 所有常驻商店的 id。 */

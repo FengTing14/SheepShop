@@ -11,7 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** /shop open <id> | reload | coins [玩家] | list */
+/**
+ * /shop —— 一个命令开一个界面，买卖都在里面。
+ *
+ * <p>早期版本是 {@code /shop open <id>} 买东西、{@code /shop sell} 卖东西，
+ * 玩家要记住开哪个，太繁琐。现在不带参数直接开界面，买卖在同一窗口完成。</p>
+ */
 final class ShopCommand implements CommandExecutor, TabCompleter {
 
     private final SheepShop plugin;
@@ -23,8 +28,7 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            help(sender, label);
-            return true;
+            return openAuto(sender);
         }
 
         switch (args[0].toLowerCase(Locale.ROOT)) {
@@ -40,21 +44,44 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(plugin.shopConfig().message("reloaded"));
                 return true;
             }
-            case "sell" -> {
-                return sell(sender);
-            }
             case "coins" -> {
                 return coins(sender, args);
             }
             case "list" -> {
-                sender.sendMessage("§6[SheepShop] §7常驻商店：§f" + String.join("§7, §f", plugin.shopConfig().shopIds()));
+                sender.sendMessage("§6[SheepShop] §7常驻商店：§f"
+                        + String.join("§7, §f", plugin.shopConfig().shopIds()));
+                return true;
+            }
+            case "help" -> {
+                help(sender, label);
                 return true;
             }
             default -> {
+                // 直接写商店 id 也认：/shop supply
+                ShopDefinition shop = plugin.shopConfig().shop(args[0]);
+                if (shop != null) {
+                    return openShop(sender, shop);
+                }
                 help(sender, label);
                 return true;
             }
         }
+    }
+
+    /** 不带参数：在商店房就开房间商店，否则开第一个常驻商店。 */
+    private boolean openAuto(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(plugin.shopConfig().message("players-only"));
+            return true;
+        }
+        if (!player.hasPermission("sheepshop.use")) {
+            player.sendMessage("§c没有权限。");
+            return true;
+        }
+        if (!plugin.shopGui().openAuto(player)) {
+            player.sendMessage("§c这里没有可用的商店，试试 §f/shop list §c看看有哪些。");
+        }
+        return true;
     }
 
     private boolean open(CommandSender sender, String[] args) {
@@ -80,22 +107,10 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("§c商店不存在：§f" + id);
             return true;
         }
-        plugin.shopGui().open(player, shop);
-        return true;
+        return openShop(sender, shop);
     }
 
-    private String firstShopId() {
-        List<String> ids = plugin.shopConfig().shopIds();
-        return ids.isEmpty() ? null : ids.get(0);
-    }
-
-    /**
-     * /shop sell —— 打开出售界面。
-     *
-     * <p>站在商店房里打开会享受价格加成；在地牢里但不是商店房，
-     * 只能开普通界面（和外面一样的价），这是「商店房卖得更多」的实现方式。</p>
-     */
-    private boolean sell(CommandSender sender) {
+    private boolean openShop(CommandSender sender, ShopDefinition shop) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(plugin.shopConfig().message("players-only"));
             return true;
@@ -104,9 +119,13 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("§c没有权限。");
             return true;
         }
-        boolean shopRoom = io.github.sheepdungeon.api.SheepDungeonAPI.inShopRoom(player);
-        plugin.sellGui().open(player, shopRoom);
+        plugin.shopGui().open(player, shop);
         return true;
+    }
+
+    private String firstShopId() {
+        List<String> ids = plugin.shopConfig().shopIds();
+        return ids.isEmpty() ? null : ids.get(0);
     }
 
     private boolean coins(CommandSender sender, String[] args) {
@@ -129,9 +148,9 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
 
     private void help(CommandSender sender, String label) {
         sender.sendMessage("§6[SheepShop] §7命令：");
-        sender.sendMessage("§7/" + label + " open [商店id] §f- 打开常驻商店");
-        sender.sendMessage("§6[SheepShop] §7/" + label + " open room §f- 打开当前房间商店");
-        sender.sendMessage("§6[SheepShop] §7/" + label + " sell §f- 打出售卖界面（商店房内价格更高）");
+        sender.sendMessage("§7/" + label + " §f- 打开商店（买卖同一个界面）");
+        sender.sendMessage("§7/" + label + " open [商店id] §f- 打开指定商店");
+        sender.sendMessage("§7/" + label + " open room §f- 打开当前商店房的商店");
         sender.sendMessage("§7/" + label + " coins [玩家] §f- 查看地牢币");
         sender.sendMessage("§7/" + label + " list §f- 列出常驻商店");
         sender.sendMessage("§7/" + label + " reload §f- 重载配置");
@@ -141,8 +160,10 @@ final class ShopCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> result = new ArrayList<>();
         if (args.length == 1) {
-            for (String option : List.of("open", "sell", "reload", "coins", "list")) {
-                if (option.startsWith(args[0].toLowerCase(Locale.ROOT))) {
+            List<String> options = new ArrayList<>(List.of("open", "reload", "coins", "list", "help"));
+            options.addAll(plugin.shopConfig().shopIds());
+            for (String option : options) {
+                if (option.toLowerCase(Locale.ROOT).startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     result.add(option);
                 }
             }

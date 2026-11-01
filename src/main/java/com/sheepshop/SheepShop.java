@@ -13,10 +13,13 @@ import java.util.UUID;
 /**
  * SheepShop —— 地牢币商店。
  *
- * <p>两种入口：</p>
+ * <p>一个命令 {@code /shop} 开一个界面，买和卖都在同一个窗口里完成。</p>
+ *
+ * <p>两种商品来源：</p>
  * <ul>
- *   <li><b>房间商店</b>：站在 SheepDungeon 的 SHOP 房间里自动打开，商品由那个房间的配置决定；</li>
- *   <li><b>常驻商店</b>：{@code /shop open <商店id>}，商品写在 config.yml。</li>
+ *   <li><b>房间商店</b>：站在 SheepDungeon 的 SHOP 房间里，商品由那个房间的配置决定，
+ *       卖东西还有价格加成；</li>
+ *   <li><b>常驻商店</b>：商品写在 config.yml 的 {@code shops} 段。</li>
  * </ul>
  *
  * <p>所有价格都扣 SheepDungeon 的地牢币，走 {@link SheepDungeonAPI}，不直接碰它的内部账本。</p>
@@ -28,7 +31,6 @@ public final class SheepShop extends JavaPlugin {
 
     private ShopConfig shopConfig;
     private ShopGui shopGui;
-    private SellGui sellGui;
     private BukkitTask watcher;
 
     /** 玩家上一次是否在商店房里，用于检测「刚走进去」这个时刻。 */
@@ -39,7 +41,6 @@ public final class SheepShop extends JavaPlugin {
         saveDefaultConfig();
         shopConfig = new ShopConfig(this);
         shopGui = new ShopGui(this);
-        sellGui = new SellGui(this);
 
         getServer().getPluginManager().registerEvents(new ShopListener(this), this);
 
@@ -71,10 +72,6 @@ public final class SheepShop extends JavaPlugin {
         return shopGui;
     }
 
-    SellGui sellGui() {
-        return sellGui;
-    }
-
     void reloadShop() {
         reloadConfig();
         shopConfig = new ShopConfig(this);
@@ -86,7 +83,7 @@ public final class SheepShop extends JavaPlugin {
      * <p>用轮询而不是事件，因为「进入房间」不是 Bukkit 事件，
      * 而 SheepDungeon 的房间是纯坐标包围盒（见它的 {@code RoomContentManager}）。</p>
      *
-     * <p><b>不再自动打开界面</b>：房间里的悬浮字会告诉玩家输入 {@code /shop open room}，
+     * <p><b>不再自动打开界面</b>：房间里的悬浮字会告诉玩家输入 {@code /shop}，
      * 让玩家自己决定什么时候开。自动弹窗在黑店里逼玩家点东西，体验很差。</p>
      */
     private void startRoomWatcher() {
@@ -116,6 +113,6 @@ public final class SheepShop extends JavaPlugin {
         long coins = SheepDungeonAPI.coins(player);
         player.sendActionBar(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
                 .legacySection()
-                .deserialize("§e按 §f/shop open room §e打开商店 §7· 地牢币 §e" + coins));
+                .deserialize("§e按 §f/shop §e打开商店 §7· 地牢币 §e" + coins));
     }
 }
