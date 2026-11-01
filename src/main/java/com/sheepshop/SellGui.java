@@ -101,27 +101,35 @@ final class SellGui {
                 .replace("%bonus%", suffix);
     }
 
-    /** 重算标题与合计，不重建界面（保留暂存区内容）。 */
+    /**
+     * 刷新金额显示。
+     *
+     * <p><b>不重建界面</b>：早期版本用「关掉再开一个新界面」来改标题，
+     * 结果鼠标拖拽时每移动一格都会触发一次点击 → 界面被反复重建 → 拖拽立刻中断，
+     * 表现就是「拖不动」。现在只更新标题（Paper 支持运行时改标题）和底部按钮。</p>
+     */
     private void refresh(Player player, Inventory inventory, Holder holder) {
         long total = totalOf(inventory, holder);
+
+        // Paper 支持直接改已打开界面的标题，不用重开
+        org.bukkit.inventory.InventoryView view = player.getOpenInventory();
+        if (view.getTopInventory() == inventory) {
+            runCatchingSetTitle(view, title(player, total, holder.shopRoom()));
+        }
+
+        // 底部按钮的金额也要跟着变（只动这两个格子，不影响暂存区）
+        paintControls(inventory, player, total, holder.shopRoom());
+
         player.sendActionBar(LEGACY.deserialize(
                 "§7合计：§e" + total + " §7地牢币" + (holder.shopRoom() ? " §a（商店房加成）" : "")));
-        // 标题里的金额要跟着变，所以得重开；但内容从旧界面搬过去
-        ItemStack[] staging = new ItemStack[STAGING_SIZE];
-        for (int i = 0; i < STAGING_SIZE; i++) {
-            staging[i] = inventory.getItem(i);
-        }
+    }
 
-        Inventory fresh = Bukkit.createInventory(holder, SIZE, LEGACY.deserialize(title(player, total, holder.shopRoom())));
-        holder.inventory(fresh);
-        for (int i = 0; i < STAGING_SIZE; i++) {
-            fresh.setItem(i, staging[i]);
+    private void runCatchingSetTitle(org.bukkit.inventory.InventoryView view, String rawTitle) {
+        try {
+            view.setTitle(LEGACY.serialize(LEGACY.deserialize(rawTitle)));
+        } catch (Throwable ignored) {
+            // 服务端不支持运行时改标题时忽略，金额还有 actionbar 和底部按钮兜底
         }
-        paintControls(fresh, player, total, holder.shopRoom());
-
-        // 关旧开新会触发 close 事件，用标志位避免「关界面就退货」把物品退掉
-        plugin.markRefreshing(player.getUniqueId());
-        player.openInventory(fresh);
     }
 
     /** 合计金额：暂存区所有物品按 SheepDungeon 的售价算。 */
@@ -185,13 +193,13 @@ final class SellGui {
     /**
      * 处理点击。
      *
-     * @return true 表示已消费
+     * @return true 表示取消这次点击（不改变容器内容）
      */
     boolean handleClick(Player player, Holder holder, InventoryClickEvent event) {
         int raw = event.getRawSlot();
         Inventory top = event.getInventory();
 
-        // 点功能区
+        // 功能区：只认两个按钮，其它一律吃掉
         if (raw >= STAGING_SIZE) {
             if (raw == CONFIRM_SLOT) {
                 confirm(player, top, holder);
@@ -201,18 +209,24 @@ final class SellGui {
             return true;
         }
 
-        // 点暂存区：允许放入/取出，但禁止 shift 一键灌满（容易误卖）
-        if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
-            return true;
-        }
-        // 放进去之后刷新金额
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (player.getOpenInventory().getTopInventory().getHolder() instanceof Holder current
-                    && current == holder) {
-                refresh(player, current.getInventory(), current);
-            }
-        });
+        // 暂存区：放行，让 Bukkit 自己完成移动。
+        // shift 点击也放行——它会把整叠移到玩家背包/或从背包自动灌入，
+        // 这正是「快速卖一堆」需要的，禁掉反而难用。
+        scheduleRefresh(player, holder);
         return false;
+    }
+
+    /** 如果玩家正开着这个出售界面，刷新一次金额。 */
+    void refreshIfOpen(Player player, Holder holder) {
+        if (player.getOpenInventory().getTopInventory().getHolder() instanceof Holder current
+                && current == holder) {
+            refresh(player, current.getInventory(), current);
+        }
+    }
+
+    /** 延迟一 tick 刷新（等 Bukkit 把物品真正放进去了再算钱）。 */
+    private void scheduleRefresh(Player player, Holder holder) {
+        Bukkit.getScheduler().runTask(plugin, () -> refreshIfOpen(player, holder));
     }
 
     private void confirm(Player player, Inventory inventory, Holder holder) {
@@ -255,6 +269,16 @@ final class SellGui {
 
     /** 把暂存区的东西全部退回背包。 */
     private void returnAll(Player player, Inventory inventory) {
+        returnAll(player, inventory, true);
+    }
+
+    /**
+     * 把暂存区的东西全部退回背包。
+     *
+     * @param notify 是否发提示；关界面时静默退货，免得每次关都刷一行
+     */
+    private void returnAll(Player player, Inventory inventory, boolean notify) {
+        boolean any = false;
         for (int i = 0; i < STAGING_SIZE; i++) {
             ItemStack item = inventory.getItem(i);
             if (item == null || item.getType().isAir()) {
@@ -263,17 +287,16 @@ final class SellGui {
             player.getInventory().addItem(item).values()
                     .forEach(rest -> player.getWorld().dropItemNaturally(player.getLocation(), rest));
             inventory.setItem(i, null);
+            any = true;
         }
-        player.sendMessage(plugin.shopConfig().message("sell-returned"));
+        if (notify && any) {
+            player.sendMessage(plugin.shopConfig().message("sell-returned"));
+        }
     }
 
     /** 界面被关掉时，把暂存区的东西还回去（防吞物品）。 */
     void onClose(Player player, Holder holder) {
-        if (plugin.consumeRefreshing(player.getUniqueId())) {
-            // 这是内部刷新导致的关闭，暂存区已经搬到新界面，不要退货
-            return;
-        }
-        returnAll(player, holder.getInventory());
+        returnAll(player, holder.getInventory(), false);
     }
 
     static String lower(String text) {

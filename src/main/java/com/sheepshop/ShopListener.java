@@ -64,13 +64,19 @@ final class ShopListener implements Listener {
             event.setCancelled(true);
             return;
         }
-        if (holder instanceof SellGui.Holder) {
-            // 拖到功能区就整次取消；拖到暂存区允许
+        if (holder instanceof SellGui.Holder sellHolder) {
+            // 拖拽允许，但要保证整次拖拽都落在暂存区里，
+            // 不能拖到功能区（按钮格）上，否则会把玻璃板/按钮搞乱
             for (int slot : event.getRawSlots()) {
                 if (slot >= SellGui.STAGING_SIZE) {
                     event.setCancelled(true);
                     return;
                 }
+            }
+            // 拖完刷新一次金额
+            if (event.getWhoClicked() instanceof Player player) {
+                plugin.getServer().getScheduler().runTask(plugin,
+                        () -> plugin.sellGui().refreshIfOpen(player, sellHolder));
             }
         }
     }

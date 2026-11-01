@@ -34,9 +34,6 @@ public final class SheepShop extends JavaPlugin {
     /** 玩家上一次是否在商店房里，用于检测「刚走进去」这个时刻。 */
     private final Map<UUID, Boolean> inRoom = new HashMap<>();
 
-    /** 正在内部刷新界面的玩家；关界面时不能把这些人的暂存物品退回去。 */
-    private final java.util.Set<UUID> refreshing = java.util.concurrent.ConcurrentHashMap.newKeySet();
-
     @Override
     public void onEnable() {
         saveDefaultConfig();
@@ -64,7 +61,6 @@ public final class SheepShop extends JavaPlugin {
             watcher = null;
         }
         inRoom.clear();
-        refreshing.clear();
     }
 
     ShopConfig shopConfig() {
@@ -77,16 +73,6 @@ public final class SheepShop extends JavaPlugin {
 
     SellGui sellGui() {
         return sellGui;
-    }
-
-    /** 标记玩家正在进行内部界面刷新（重开界面不算「关闭」）。 */
-    void markRefreshing(UUID player) {
-        refreshing.add(player);
-    }
-
-    /** 消费刷新标记；返回 true 表示这次关闭是内部刷新引起的。 */
-    boolean consumeRefreshing(UUID player) {
-        return refreshing.remove(player);
     }
 
     void reloadShop() {

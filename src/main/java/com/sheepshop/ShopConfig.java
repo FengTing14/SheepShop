@@ -111,9 +111,34 @@ final class ShopConfig {
         return Math.min(6, Math.max(1, rows));
     }
 
+    /**
+     * 提示文本。
+     *
+     * <p>老配置缺少新加的 key 时，直接返回「缺少提示文本：xxx」对玩家毫无意义。
+     * 这里内置一份默认值兜底，保证任何情况下都能给出正常的中文提示。</p>
+     */
     String message(String key) {
-        return plugin.getConfig().getString("messages." + key, "§c缺少提示文本: " + key);
+        String configured = plugin.getConfig().getString("messages." + key);
+        if (configured != null && !configured.isBlank()) {
+            return configured;
+        }
+        String fallback = DEFAULTS.get(key);
+        return fallback != null ? fallback : "§c" + key;
     }
+
+    /** 内置默认提示，与 config.yml 的 messages 段保持一致。 */
+    private static final Map<String, String> DEFAULTS = Map.ofEntries(
+            Map.entry("no-coins", "§c地牢币不足，还差 §e%need%§c。"),
+            Map.entry("bought", "§a已购买 §f%item% §7×%amount%§a，花费 §e%price%§a 地牢币。"),
+            Map.entry("sold-out", "§c这件商品已经卖完了。"),
+            Map.entry("unknown-item", "§c商品配置有误：找不到物品 §f%id%§c。"),
+            Map.entry("inventory-full", "§e背包满了，物品掉在你脚下。"),
+            Map.entry("reloaded", "§a配置已重新加载。"),
+            Map.entry("players-only", "§c此命令只能由玩家执行。"),
+            Map.entry("sell-nothing", "§c暂存区里没有能卖的东西。"),
+            Map.entry("sold", "§a卖出 §f%count% §a件，获得 §e%total% §a地牢币。"),
+            Map.entry("sell-returned", "§7已把暂存区的东西放回背包。")
+    );
 
     /** 常驻商店；不存在返回 null。 */
     ShopDefinition shop(String id) {
