@@ -1,0 +1,19 @@
+name: SheepShop
+version: '${version}'
+main: com.sheepshop.SheepShop
+api-version: '1.21'
+author: AkaCandyKAngel
+description: 地牢币商店 —— 房间商店与大厅商店，消耗 SheepDungeon 的地牢币
+depend: [SheepDungeon]
+commands:
+  sheepshop:
+    description: SheepShop 主命令
+    usage: /shop <open|reload|coins|list>
+    aliases: [shop]
+permissions:
+  sheepshop.use:
+    description: 打开商店
+    default: true
+  sheepshop.admin:
+    description: 重载配置、发放地牢币
+    default: op

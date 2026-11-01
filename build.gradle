@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.sheepshop'
+version = '1.0.0-SNAPSHOT'
+description = 'Dungeon coin shop: room shops and lobby shops, driven by SheepDungeon coins.'
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:26.3.build.178-stable'
+
+    // SheepDungeon 的对外 API（地牢币、房间查询）。服务器上 SheepDungeon 是正式插件，
+    // 这里直接用它构建出来的 jar 编译，避免复制一份 API 源码造成两边不一致。
+    def sdJar = file('../SheepDungeon/plugin/build/libs/SheepDungeon-0.1.0.jar')
+    if (sdJar.isFile()) {
+        compileOnly files(sdJar)
+    } else {
+        logger.warn('SheepDungeon jar 不存在，先构建 SheepDungeon 再编译 SheepShop：' + sdJar)
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+
+processResources {
+    filesMatching('plugin.yml') {
+        expand(version: project.version)
+    }
+}
+
+jar {
+    archiveBaseName = 'SheepShop'
+}
