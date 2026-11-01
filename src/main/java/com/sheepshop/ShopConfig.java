@@ -86,10 +86,6 @@ final class ShopConfig {
         return plugin.getConfig().getBoolean("room-shop-enabled", true);
     }
 
-    long roomShopOpenDelay() {
-        return Math.max(0L, plugin.getConfig().getLong("room-shop-open-delay", 10L));
-    }
-
     String roomShopTitle() {
         return plugin.getConfig().getString("room-shop-title", "§8商店 §7· 地牢币 §e%coins%");
     }

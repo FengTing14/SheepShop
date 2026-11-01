@@ -30,9 +30,8 @@ public final class SheepShop extends JavaPlugin {
     private ShopGui shopGui;
     private BukkitTask watcher;
 
-    /** 玩家是否已经因为「进入这个商店房」开过界面；离开房间后清掉。 */
+    /** 玩家上一次是否在商店房里，用于检测「刚走进去」这个时刻。 */
     private final Map<UUID, Boolean> inRoom = new HashMap<>();
-    private final Map<UUID, BukkitTask> pendingOpen = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -59,8 +58,6 @@ public final class SheepShop extends JavaPlugin {
             watcher.cancel();
             watcher = null;
         }
-        pendingOpen.values().forEach(BukkitTask::cancel);
-        pendingOpen.clear();
         inRoom.clear();
     }
 
@@ -82,6 +79,9 @@ public final class SheepShop extends JavaPlugin {
      *
      * <p>用轮询而不是事件，因为「进入房间」不是 Bukkit 事件，
      * 而 SheepDungeon 的房间是纯坐标包围盒（见它的 {@code RoomContentManager}）。</p>
+     *
+     * <p><b>不再自动打开界面</b>：房间里的悬浮字会告诉玩家输入 {@code /shop open room}，
+     * 让玩家自己决定什么时候开。自动弹窗在黑店里逼玩家点东西，体验很差。</p>
      */
     private void startRoomWatcher() {
         if (watcher != null) {
@@ -91,52 +91,25 @@ public final class SheepShop extends JavaPlugin {
     }
 
     private void checkRooms() {
-        if (!shopConfig.roomShopEnabled()) {
-            return;
-        }
         if (!SheepDungeonAPI.available()) {
             return;
         }
-
         for (Player player : Bukkit.getOnlinePlayers()) {
             UUID id = player.getUniqueId();
             boolean inside = SheepDungeonAPI.inShopRoom(player);
             boolean was = inRoom.getOrDefault(id, false);
-
+            inRoom.put(id, inside);
             if (inside && !was) {
-                inRoom.put(id, true);
-                scheduleOpen(player);
-            } else if (!inside && was) {
-                inRoom.put(id, false);
-                BukkitTask task = pendingOpen.remove(id);
-                if (task != null) {
-                    task.cancel();
-                }
+                onEnterShopRoom(player);
             }
         }
     }
 
-    private void scheduleOpen(Player player) {
-        long delay = shopConfig.roomShopOpenDelay();
-        if (delay <= 0L) {
-            shopGui.openRoomShop(player);
-            return;
-        }
-        BukkitTask old = pendingOpen.remove(player.getUniqueId());
-        if (old != null) {
-            old.cancel();
-        }
-        BukkitTask task = Bukkit.getScheduler().runTaskLater(this, () -> {
-            pendingOpen.remove(player.getUniqueId());
-            if (!player.isOnline()) {
-                return;
-            }
-            // 延迟期间可能已经走开了，再确认一次
-            if (!SheepDungeonAPI.inShopRoom(player)) {
-                return;
-            }
-            shopGui.openRoomShop(player);
-        }, delay);
-        pendingOpen.put(player.getUniqueId(), task);
+    /** 进入商店房：只在界面上提示怎么开，不替玩家打开。 */
+    private void onEnterShopRoom(Player player) {
+        long coins = SheepDungeonAPI.coins(player);
+        player.sendActionBar(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+                .legacySection()
+                .deserialize("§e按 §f/shop open room §e打开商店 §7· 地牢币 §e" + coins));
     }
 }

@@ -9,9 +9,8 @@
 # 是否启用房间商店
 room-shop-enabled: true
 
-# 进入商店房后自动打开界面的延迟（tick）。20 tick = 1 秒。
-# 设 0 表示进房间立刻打开。
-room-shop-open-delay: 10
+# 房间商店不再自动弹界面：房间里的悬浮字会提示玩家输入 /shop open room。
+# 玩家自己决定什么时候开，比强行弹窗好。
 
 # 界面标题里的地牢币余额占位符是 %coins%
 room-shop-title: "§8商店 §7· 地牢币 §e%coins%"
