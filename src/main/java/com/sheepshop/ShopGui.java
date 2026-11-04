@@ -293,15 +293,19 @@ final class ShopGui {
                 .replace("%rotate%", rotate == null ? "" : rotate);
     }
 
-    /** 「X分Y秒 / Y秒」形式的换货倒计时；不在商店房返回空串。 */
+    /** 「X分Y秒 / Y秒」形式的换货倒计时；不在商店房返回空串。任何异常都不影响开店。 */
     String rotateText(Player player) {
-        long sec = SheepDungeonAPI.shopRotateSeconds(player);
-        if (sec < 0L) {
+        try {
+            long sec = SheepDungeonAPI.shopRotateSeconds(player);
+            if (sec < 0L) {
+                return "";
+            }
+            long m = sec / 60L;
+            long s = sec % 60L;
+            return m > 0L ? (m + "分" + s + "秒") : (s + "秒");
+        } catch (Throwable t) {
             return "";
         }
-        long m = sec / 60L;
-        long s = sec % 60L;
-        return m > 0L ? (m + "分" + s + "秒") : (s + "秒");
     }
 
     /** 每秒刷新一次：商店房界面开着时，更新标题里的换货倒计时。 */
