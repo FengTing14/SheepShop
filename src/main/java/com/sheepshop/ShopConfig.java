@@ -87,7 +87,7 @@ final class ShopConfig {
     }
 
     String roomShopTitle() {
-        return plugin.getConfig().getString("room-shop-title", "§8商店 §7· 地牢币 §e%coins%");
+        return plugin.getConfig().getString("room-shop-title", "§8商店 §7· 地牢币 §e%coins% §7· §e%rotate%§7后换货");
     }
 
     /** 在商店房卖东西的价格倍率；1.0 表示无加成。 */

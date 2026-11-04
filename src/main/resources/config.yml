@@ -13,8 +13,8 @@ room-shop-enabled: true
 # 房间商店不再自动弹界面：房间里的悬浮字会提示玩家输入 /shop。
 # 玩家自己决定什么时候开，比强行弹窗好。
 
-# 界面标题里的地牢币余额占位符是 %coins%
-room-shop-title: "§8商店 §7· 地牢币 §e%coins%"
+# 界面标题里的地牢币余额占位符是 %coins%；%rotate% 是距离下次换货的倒计时
+room-shop-title: "§8商店 §7· 地牢币 §e%coins% §7· §e%rotate%§7后换货"
 
 # 界面标题。%coins% 是余额，%total% 是右边暂存区的合计卖价，%bonus% 是商店房加成标记。
 # 买卖在同一个界面，所以标题同时显示余额和合计。

@@ -105,6 +105,8 @@ public final class SheepShop extends JavaPlugin {
             if (inside && !was) {
                 onEnterShopRoom(player);
             }
+            // 商店界面开着时，每秒刷新标题里的「换货倒计时」
+            shopGui.tickRotation(player);
         }
     }
 

@@ -174,7 +174,7 @@ final class ShopGui {
         String template = rawTitle == null || rawTitle.isBlank()
                 ? plugin.shopConfig().shopTitle() : rawTitle;
         Inventory inventory = Bukkit.createInventory(holder, SIZE,
-                LEGACY.deserialize(fill(template, coins, total, shopRoom)));
+                LEGACY.deserialize(fill(template, coins, total, shopRoom, shopRoom ? rotateText(player) : "")));
         holder.inventory(inventory);
         holder.titleTemplate(template);
 
@@ -284,12 +284,36 @@ final class ShopGui {
     }
 
     /** 标题占位符替换。买卖共用，所以同时有余额和合计。 */
-    private String fill(String template, long coins, long total, boolean shopRoom) {
+    private String fill(String template, long coins, long total, boolean shopRoom, String rotate) {
         String suffix = shopRoom ? plugin.shopConfig().sellBonusSuffix() : "";
         return template
                 .replace("%coins%", String.valueOf(coins))
                 .replace("%total%", String.valueOf(total))
-                .replace("%bonus%", suffix);
+                .replace("%bonus%", suffix)
+                .replace("%rotate%", rotate == null ? "" : rotate);
+    }
+
+    /** 「X分Y秒 / Y秒」形式的换货倒计时；不在商店房返回空串。 */
+    String rotateText(Player player) {
+        long sec = SheepDungeonAPI.shopRotateSeconds(player);
+        if (sec < 0L) {
+            return "";
+        }
+        long m = sec / 60L;
+        long s = sec % 60L;
+        return m > 0L ? (m + "分" + s + "秒") : (s + "秒");
+    }
+
+    /** 每秒刷新一次：商店房界面开着时，更新标题里的换货倒计时。 */
+    void tickRotation(Player player) {
+        org.bukkit.inventory.InventoryView view = player.getOpenInventory();
+        if (!(view.getTopInventory().getHolder() instanceof Holder holder)) {
+            return;
+        }
+        if (!holder.shopRoom()) {
+            return;
+        }
+        refresh(player, holder);
     }
 
     private ItemStack icon(Material material, String name, List<net.kyori.adventure.text.Component> lore) {
@@ -378,7 +402,8 @@ final class ShopGui {
                 String template = holder.titleTemplate() == null
                         ? plugin.shopConfig().shopTitle() : holder.titleTemplate();
                 view.setTitle(LEGACY.serialize(LEGACY.deserialize(
-                        fill(template, coins, total, holder.shopRoom()))));
+                        fill(template, coins, total, holder.shopRoom(),
+                                holder.shopRoom() ? rotateText(player) : ""))));
             } catch (Throwable ignored) {
                 // 服务端不支持运行时改标题时忽略，金额还有底部按钮兜底
             }
